@@ -25,15 +25,15 @@ class DQNAgent:
         # DQN 하이퍼파라미터
         self.epsilon = 1.
         self.epsilon_start, self.epsilon_end = 1.0, 0.1
-        self.exploration_steps = 200000.
+        self.exploration_steps = 400000.
         self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) \
                                   / self.exploration_steps
         self.batch_size = 32
-        self.train_start = 10000
-        self.update_target_rate = 5000
+        self.train_start = 50000
+        self.update_target_rate = 10000
         self.discount_factor = 0.99
         # 리플레이 메모리, 최대 크기 400000
-        self.memory = deque(maxlen=200000)
+        self.memory = deque(maxlen=400000)
         self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
