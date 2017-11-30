@@ -34,7 +34,6 @@ class DQNAgent:
         self.discount_factor = 0.99
         # 리플레이 메모리, 최대 크기 400000
         self.memory = deque(maxlen=400000)
-        self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
         self.target_model = self.build_model()
@@ -50,7 +49,7 @@ class DQNAgent:
         self.summary_placeholders, self.update_ops, self.summary_op = \
             self.setup_summary()
         self.summary_writer = tf.summary.FileWriter(
-            'summary/breakout_dqn', self.sess.graph)
+            'summary/supermario_dqn', self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
         if self.load_model:
@@ -172,7 +171,7 @@ def pre_processing(observe):
 if __name__ == "__main__":
     # 환경과 DQN 에이전트 생성
     env = Env()
-    agent = DQNAgent(action_size=14, env=env)
+    agent = DQNAgent(action_size=6, env=env)
 
     scores, episodes, global_step = [], [], 0
 
@@ -187,23 +186,46 @@ if __name__ == "__main__":
         step, score, start_life = 0, 0, 5
         observe = env.reset(start_position=start_position)
 
-        for _ in range(random.randint(1, agent.no_op_steps)):
-            observe, _, _, _, _, _, _ = env.step(1)
-
         state = pre_processing(observe)
         history = np.stack((state, state, state, state), axis=2)
         history = np.reshape([history], (1, 84, 84, 4))
+
+        action_count = 0
+        real_action, action = 0, 0
 
         while not done:
             global_step += 1
             step += 1
 
             # 바로 전 4개의 상태로 행동을 선택
+            action_count = action_count + 1
+            # 0: stop, 3: left, 4: left jump, 7:right, 8:right jump 11: jump
             action = agent.get_action(history)
+            if action == 0:
+                real_action = 0
+            elif action == 1:
+                real_action = 3
+            elif action == 2:
+                real_action = 4
+            elif action == 3:
+                real_action = 7
+            elif action == 4:
+                real_action = 8
+            else:
+                real_action = 11
 
             # 선택한 행동으로 환경에서 한 타임스텝 진행
-            observe, reward, done, clear, max_x, timeout, now_x = env.step(action)
-            reward /= 10
+            observe, reward, done, clear, max_x, timeout, now_x = \
+                env.step(real_action)
+            if clear:
+                reward += 30
+                done = True
+
+            if done and not clear:
+                reward = -30
+
+            reward /= 30
+            reward = np.clip(reward, -1., 1.)
 
             # 각 타임스텝마다 상태 전처리
             next_state = pre_processing(observe)
@@ -212,13 +234,6 @@ if __name__ == "__main__":
 
             agent.avg_q_max += np.amax(
                 agent.model.predict(np.float32(history / 255.))[0])
-
-            if clear:
-                reward += 1000
-                done = True
-
-            if done and not clear:
-                reward = -1000
 
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, done)
@@ -263,4 +278,4 @@ if __name__ == "__main__":
 
         # 1000 에피소드마다 모델 저장
         if e % 1000 == 0:
-            agent.model.save_weights("./save_model/breakout_dqn.h5")
+            agent.model.save_weights("./save_model/supermario_dqn.h5")
