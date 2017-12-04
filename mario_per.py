@@ -50,7 +50,7 @@ class DQNAgent:
         self.summary_placeholders, self.update_ops, self.summary_op = \
             self.setup_summary()
         self.summary_writer = tf.summary.FileWriter(
-            'summary/supermario_her', self.sess.graph)
+            'summary/supermario_per', self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
         if self.load_model:
@@ -154,17 +154,17 @@ class DQNAgent:
             reward.append(mini_batch[i][1][2])
             dead.append(mini_batch[i][1][4])
 
+        curr_q = self.model.predict(history)
         value = self.model.predict(next_history)
         target_value = self.target_model.predict(next_history)
 
         for i in range(self.batch_size):
-            old_val = target[i][action[i]]
             if dead[i]:
                 target[i] = reward[i]
             else:
                 target[i] = reward[i] + self.discount_factor * \
                                         target_value[i][np.argmax(value[i])]
-            errors[i] = abs(old_val - target[i])
+            errors[i] = abs(curr_q[i][action[i]] - target[i])
 
         # TD-error로 priority 업데이트
         for i in range(self.batch_size):
@@ -195,7 +195,9 @@ class DQNAgent:
         summary_op = tf.summary.merge_all()
         return summary_placeholders, update_ops, summary_op
 
-class Memory:  # stored as ( s, a, r, s_ ) in SumTree
+
+# stored as ( s, a, r, s_ ) in SumTree
+class Memory:
     e = 0.01
     a = 0.6
 
@@ -303,7 +305,7 @@ if __name__ == "__main__":
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, done)
 
-            if len(agent.memory) >= agent.train_start:
+            if global_step >= agent.train_start:
                 agent.train_model()
 
             # 일정 시간마다 타겟모델을 모델의 가중치로 업데이트
@@ -333,8 +335,7 @@ if __name__ == "__main__":
                     summary_str = agent.sess.run(agent.summary_op)
                     agent.summary_writer.add_summary(summary_str, e + 1)
 
-                print("episode:", e, "  score:", score, "  memory length:",
-                      len(agent.memory), "  epsilon:", agent.epsilon,
+                print("episode:", e, "  score:", score, "  epsilon:", agent.epsilon,
                       "  global_step:", global_step, "  average_q:",
                       agent.avg_q_max / float(step), "  average loss:",
                       agent.avg_loss / float(step))
@@ -343,4 +344,4 @@ if __name__ == "__main__":
 
         # 1000 에피소드마다 모델 저장
         if e % 1000 == 0:
-            agent.model.save_weights("./save_model/supermario_her.h5")
+            agent.model.save_weights("./save_model/supermario_per.h5")
