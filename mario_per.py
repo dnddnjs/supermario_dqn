@@ -284,15 +284,16 @@ if __name__ == "__main__":
             # 선택한 행동으로 환경에서 한 타임스텝 진행
             observe, reward, done, clear, max_x, timeout, now_x = \
                 env.step(real_action)
-            if clear:
-                reward += 30
+
+            if now_x >= 8776:
+                reward = 300
                 done = True
 
-            if done and not clear:
-                reward = -30
+            if done and now_x < 8776:
+                reward = -100
 
-            reward /= 30
-            reward = np.clip(reward, -1., 1.)
+            reward /= 100
+            # reward = np.clip(reward, -1., 1.)
 
             # 각 타임스텝마다 상태 전처리
             next_state = pre_processing(observe)
